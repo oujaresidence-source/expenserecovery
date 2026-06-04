@@ -50,6 +50,7 @@ export default function ArabicRecoveryApp() {
   const [state, setState] = useState(initialState);
   const [newApartmentCode, setNewApartmentCode] = useState("");
   const [exportApartmentId, setExportApartmentId] = useState("all");
+  const [copySourceApartmentId, setCopySourceApartmentId] = useState("");
   const [storageMode, setStorageMode] = useState<"supabase" | "local">("local");
   const [syncError, setSyncError] = useState("");
   const hydratedRef = useRef(false);
@@ -136,6 +137,58 @@ export default function ArabicRecoveryApp() {
         return { ...next, totalCalculatedAmountSar: calculateExpenseTotal(next) };
       }),
     }));
+  }
+
+  function copyApartmentExpenses(sourceApartmentId: string, targetApartmentId: string) {
+    if (!sourceApartmentId || sourceApartmentId === targetApartmentId) return;
+
+    setState((current) => {
+      const date = new Date().toISOString().slice(0, 10);
+      const completeExpenses = ensureExpensesForApartments(current.apartments, current.expenses);
+      const sourceByItem = new Map(
+        completeExpenses
+          .filter((expense) => expense.apartmentId === sourceApartmentId)
+          .map((expense) => [`${expense.section}::${expense.itemName}`, expense]),
+      );
+
+      return {
+        ...current,
+        apartments: current.apartments.map((apartment) =>
+          apartment.id === targetApartmentId ? { ...apartment, status: "جاري الإدخال", updatedAt: date } : apartment,
+        ),
+        expenses: completeExpenses.map((expense) => {
+          if (expense.apartmentId !== targetApartmentId) return expense;
+          const source = sourceByItem.get(`${expense.section}::${expense.itemName}`);
+          if (!source) return expense;
+
+          const copied = {
+            ...expense,
+            description: source.description,
+            didPay: source.didPay,
+            expenseType: source.expenseType,
+            recurringType: source.recurringType,
+            startDate: source.startDate,
+            startDateCertainty: source.startDateCertainty,
+            endDate: source.endDate,
+            endDateCertainty: source.endDateCertainty,
+            isStillActive: source.isStillActive,
+            amountSar: source.amountSar,
+            amountType: source.amountType,
+            minAmountSar: source.minAmountSar,
+            maxAmountSar: source.maxAmountSar,
+            numberOfPeriods: source.numberOfPeriods,
+            paymentSource: source.paymentSource,
+            paymentSourceOther: source.paymentSourceOther,
+            paymentMethod: source.paymentMethod,
+            paymentMethodOther: source.paymentMethodOther,
+            notes: source.notes,
+            updatedAt: date,
+          };
+
+          return { ...copied, totalCalculatedAmountSar: calculateExpenseTotal(copied) };
+        }),
+      };
+    });
   }
 
   function addApartment() {
@@ -233,6 +286,9 @@ export default function ArabicRecoveryApp() {
               updateApartment={updateApartment}
               updateExpense={updateExpense}
               setActiveApartment={(id) => setState((current) => ({ ...current, activeApartmentId: id }))}
+              copySourceApartmentId={copySourceApartmentId}
+              setCopySourceApartmentId={setCopySourceApartmentId}
+              copyApartmentExpenses={copyApartmentExpenses}
               goApartments={() => setPage("apartments")}
               exportApartment={() => {
                 setExportApartmentId(activeApartment.id);
@@ -346,10 +402,14 @@ function RebuildPage(props: {
   updateApartment: (id: string, patch: Partial<Apartment>) => void;
   updateExpense: (id: string, patch: Partial<Expense>) => void;
   setActiveApartment: (id: string) => void;
+  copySourceApartmentId: string;
+  setCopySourceApartmentId: (id: string) => void;
+  copyApartmentExpenses: (sourceApartmentId: string, targetApartmentId: string) => void;
   goApartments: () => void;
   exportApartment: () => void;
 }) {
   const expenses = props.state.expenses.filter((expense) => expense.apartmentId === props.apartment.id && !expense.archivedAt);
+  const copySources = props.state.apartments.filter((apartment) => !apartment.archivedAt && apartment.id !== props.apartment.id);
 
   return (
     <div className="mt-4 space-y-4">
@@ -376,6 +436,23 @@ function RebuildPage(props: {
               {props.state.apartments.filter((apartment) => !apartment.archivedAt).map((apartment) => <option key={apartment.id} value={apartment.id}>{apartment.code}</option>)}
             </select>
           </Field>
+          <div className="rounded-2xl border border-line bg-canvas p-3 md:col-span-2">
+            <p className="text-sm font-black text-ink">نسخ مصاريف من شقة ثانية</p>
+            <p className="mt-1 text-sm leading-6 text-muted">مفيد لو 9B و 12B نفس التجهيز، أو لو عبيت 3BMJ وتبي تنسخها لشقة مشابهة. سيستبدل إجابات الشقة الحالية.</p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto]">
+              <select className="input" value={props.copySourceApartmentId} onChange={(event) => props.setCopySourceApartmentId(event.target.value)}>
+                <option value="">اختر الشقة المصدر</option>
+                {copySources.map((apartment) => <option key={apartment.id} value={apartment.id}>{apartment.code}</option>)}
+              </select>
+              <button
+                className="btn-primary sm:w-auto"
+                disabled={!props.copySourceApartmentId}
+                onClick={() => props.copyApartmentExpenses(props.copySourceApartmentId, props.apartment.id)}
+              >
+                انسخ لهذه الشقة
+              </button>
+            </div>
+          </div>
           <Field label="رمز الشقة">
             <input className="input" value={props.apartment.code} onChange={(event) => props.updateApartment(props.apartment.id, { code: event.target.value })} />
           </Field>
