@@ -44,4 +44,26 @@ npm run dev
 - apartments
 - expenses
 
-حالياً التطبيق يحفظ تلقائياً في المتصفح حتى لا يضيع شيء أثناء التجربة. Supabase يمكن ربطه لاحقاً عندما تحتاج حفظ حقيقي مشترك بين الأجهزة.
+## ربط Supabase
+
+1. افتح Supabase وأنشئ Project جديد.
+2. من Supabase افتح **SQL Editor**.
+3. انسخ محتوى `supabase/schema.sql` وشغّله.
+4. من **Project Settings → API** انسخ:
+   - Project URL
+   - anon public key
+5. في Netlify افتح المشروع ثم:
+   - **Site configuration**
+   - **Environment variables**
+   - أضف:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL=ضع رابط مشروع Supabase هنا
+NEXT_PUBLIC_SUPABASE_ANON_KEY=ضع anon public key هنا
+```
+
+6. اعمل deploy جديد من Netlify.
+
+لا تضع `service_role` في Netlify ولا ترسله لأي أحد. التطبيق يحتاج anon public key فقط.
+
+إذا لم يجد التطبيق مفاتيح Supabase، سيستخدم حفظ محلي في المتصفح كخطة احتياطية.

@@ -1,5 +1,5 @@
 create table apartments (
-  id uuid primary key default gen_random_uuid(),
+  id text primary key,
   code text not null unique,
   district text not null default '',
   project text not null default '',
@@ -14,8 +14,8 @@ create table apartments (
 );
 
 create table expenses (
-  id uuid primary key default gen_random_uuid(),
-  apartment_id uuid not null references apartments(id) on delete cascade,
+  id text primary key,
+  apartment_id text not null references apartments(id) on delete cascade,
   section text not null,
   item_name text not null,
   description text not null default '',

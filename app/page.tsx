@@ -1,7 +1,7 @@
 "use client";
 
 import type { ChangeEvent, ReactNode } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Download, Home, Plus, Save, ScrollText, WalletCards } from "lucide-react";
 import {
   Apartment,
@@ -25,6 +25,8 @@ import {
   summarizePortfolio,
   toCsv,
 } from "@/lib/expense-recovery";
+import { hasSupabaseConfig } from "@/lib/supabase";
+import { loadRecoveryFromSupabase, saveRecoveryToSupabase } from "@/lib/supabase-sync";
 
 const storageKey = "ouja-arabic-recovery-v2";
 
@@ -47,18 +49,55 @@ export default function ArabicRecoveryApp() {
   const [state, setState] = useState(initialState);
   const [newApartmentCode, setNewApartmentCode] = useState("");
   const [exportApartmentId, setExportApartmentId] = useState("all");
+  const [storageMode, setStorageMode] = useState<"supabase" | "local">("local");
+  const [syncError, setSyncError] = useState("");
+  const hydratedRef = useRef(false);
 
   useEffect(() => {
-    const saved = window.localStorage.getItem(storageKey);
-    if (saved) setState(JSON.parse(saved));
+    async function loadSavedData() {
+      if (hasSupabaseConfig()) {
+        try {
+          setStorageMode("supabase");
+          setState((current) => ({ ...current, saveStatus: "جاري الحفظ" }));
+          const remoteState = await loadRecoveryFromSupabase(initialState);
+          setState(remoteState);
+          hydratedRef.current = true;
+          return;
+        } catch (error) {
+          setSyncError(error instanceof Error ? error.message : "تعذر الاتصال بـ Supabase");
+        }
+      }
+
+      const saved = window.localStorage.getItem(storageKey);
+      if (saved) setState(JSON.parse(saved));
+      hydratedRef.current = true;
+    }
+
+    void loadSavedData();
   }, []);
 
   useEffect(() => {
+    if (!hydratedRef.current) return;
     setState((current) => ({ ...current, saveStatus: "جاري الحفظ" }));
     const timeout = window.setTimeout(() => {
       setState((current) => {
-        window.localStorage.setItem(storageKey, JSON.stringify({ ...current, saveStatus: "تم الحفظ" }));
-        return { ...current, saveStatus: "تم الحفظ" };
+        const next = { ...current, saveStatus: "تم الحفظ" as const };
+
+        if (hasSupabaseConfig()) {
+          saveRecoveryToSupabase(next)
+            .then(() => {
+              setStorageMode("supabase");
+              setSyncError("");
+            })
+            .catch((error) => {
+              setSyncError(error instanceof Error ? error.message : "تعذر الحفظ في Supabase");
+              window.localStorage.setItem(storageKey, JSON.stringify(next));
+            });
+        } else {
+          window.localStorage.setItem(storageKey, JSON.stringify(next));
+        }
+
+        return next;
       });
     }, 350);
     return () => window.clearTimeout(timeout);
@@ -143,6 +182,8 @@ export default function ArabicRecoveryApp() {
             <div className="mt-7 rounded-2xl border border-line bg-canvas p-4">
               <p className="text-sm font-black">الحفظ التلقائي</p>
               <p className="mt-2 text-lg font-black text-brand">{state.saveStatus}</p>
+              <p className="mt-1 text-xs font-black text-muted">{storageMode === "supabase" ? "Supabase متصل" : "حفظ محلي"}</p>
+              {syncError ? <p className="mt-2 text-xs font-bold text-coral">{syncError}</p> : null}
             </div>
           </div>
         </aside>
@@ -154,6 +195,7 @@ export default function ArabicRecoveryApp() {
               <h2 className="mt-1 text-3xl font-black text-ink">{navItems.find((item) => item.key === state.activePage)?.label}</h2>
             </div>
             <div className="flex flex-wrap gap-2">
+              <span className="rounded-xl bg-canvas px-3 py-2 text-sm font-black text-muted">{storageMode === "supabase" ? "Supabase متصل" : "حفظ محلي"}</span>
               <button className="btn-muted w-auto" onClick={() => setState((current) => ({ ...current, saveStatus: "تم الحفظ" }))}>
                 <Save size={18} /> حفظ
               </button>
@@ -162,6 +204,7 @@ export default function ArabicRecoveryApp() {
               </button>
             </div>
           </header>
+          {syncError ? <div className="mt-3 rounded-2xl border border-coral bg-surface p-3 text-sm font-bold text-coral">تنبيه Supabase: {syncError}</div> : null}
 
           {state.activePage === "dashboard" && (
             <Dashboard state={state} portfolio={portfolio} setPage={setPage} setActiveApartment={(id) => setState((current) => ({ ...current, activeApartmentId: id }))} />
