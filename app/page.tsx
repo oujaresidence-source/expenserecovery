@@ -228,6 +228,47 @@ export default function ArabicRecoveryApp() {
     downloadBlob(new Blob([output], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), "تصدير-مصاريف-الشقق.xlsx");
   }
 
+  async function downloadDetailedXlsx() {
+    const xlsx = await import("xlsx");
+    const allRows = exportRows(displayState, "all");
+    const apartmentSummaryRows = displayState.apartments
+      .filter((apartment) => !apartment.archivedAt)
+      .map((apartment) => {
+        const summary = summarizeApartment(apartment, displayState.expenses);
+        return {
+          "رمز الشقة": apartment.code,
+          "الحي / المشروع": [apartment.district, apartment.project].filter(Boolean).join(" / "),
+          "حالة الإدخال": apartment.status,
+          "نسبة الاكتمال": `${summary.completion}%`,
+          "عدد البنود": summary.items.length,
+          "البنود المجابة": summary.answered,
+          "بنود نعم": summary.paid.length,
+          "إجمالي مصاريف الشقة": summary.total,
+          "إجمالي المؤكد": summary.exact,
+          "إجمالي التقديري": summary.estimated,
+          "إجمالي المتكرر": summary.recurring,
+          "لا أتذكر مبلغها": summary.unknownAmount,
+          "آخر تحديث": apartment.updatedAt,
+        };
+      });
+    const portfolioRows = [{
+      "إجمالي المصاريف": portfolio.total,
+      "المصاريف المؤكدة": portfolio.exact,
+      "المصاريف التقديرية": portfolio.estimated,
+      "المصاريف المتكررة": portfolio.recurring,
+      "عدد الشقق": portfolio.apartments,
+      "الشقق المكتملة": portfolio.completed,
+      "آخر تحديث": portfolio.lastUpdated,
+    }];
+
+    const workbook = xlsx.utils.book_new();
+    xlsx.utils.book_append_sheet(workbook, xlsx.utils.json_to_sheet(allRows), "كل التفاصيل");
+    xlsx.utils.book_append_sheet(workbook, xlsx.utils.json_to_sheet(apartmentSummaryRows), "ملخص الشقق");
+    xlsx.utils.book_append_sheet(workbook, xlsx.utils.json_to_sheet(portfolioRows), "ملخص عام");
+    const output = xlsx.write(workbook, { type: "array", bookType: "xlsx" });
+    downloadBlob(new Blob([output], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), "تحليل-تفصيلي-لكل-المصاريف.xlsx");
+  }
+
   return (
     <main dir="rtl" className="min-h-screen text-right">
       <div className="mx-auto flex min-h-screen max-w-[1540px] flex-col lg:flex-row-reverse">
@@ -257,6 +298,9 @@ export default function ArabicRecoveryApp() {
               <span className="rounded-xl bg-canvas px-3 py-2 text-sm font-black text-muted">{storageMode === "supabase" ? "Supabase متصل" : "حفظ محلي"}</span>
               <button className="btn-muted w-auto" onClick={() => setState((current) => ({ ...current, saveStatus: "تم الحفظ" }))}>
                 <Save size={18} /> حفظ
+              </button>
+              <button className="btn-muted w-auto" onClick={downloadDetailedXlsx}>
+                <Download size={18} /> تحميل كل التفاصيل
               </button>
               <button className="btn-primary w-auto" onClick={() => setPage("rebuild")}>
                 <Plus size={18} /> إضافة مصروف سريع
@@ -297,7 +341,7 @@ export default function ArabicRecoveryApp() {
             />
           )}
           {state.activePage === "export" && (
-            <ExportPage state={displayState} rows={filteredRows} exportApartmentId={exportApartmentId} setExportApartmentId={setExportApartmentId} downloadCsv={downloadCsv} downloadXlsx={downloadXlsx} />
+            <ExportPage state={displayState} rows={filteredRows} exportApartmentId={exportApartmentId} setExportApartmentId={setExportApartmentId} downloadCsv={downloadCsv} downloadXlsx={downloadXlsx} downloadDetailedXlsx={downloadDetailedXlsx} />
           )}
         </section>
       </div>
@@ -731,7 +775,7 @@ function ExpenseCard({ expense, updateExpense }: { expense: Expense; updateExpen
   );
 }
 
-function ExportPage(props: { state: typeof initialState; rows: Record<string, string | number>[]; exportApartmentId: string; setExportApartmentId: (id: string) => void; downloadCsv: () => void; downloadXlsx: () => void }) {
+function ExportPage(props: { state: typeof initialState; rows: Record<string, string | number>[]; exportApartmentId: string; setExportApartmentId: (id: string) => void; downloadCsv: () => void; downloadXlsx: () => void; downloadDetailedXlsx: () => void }) {
   return (
     <div className="mt-5 grid gap-5 xl:grid-cols-[0.75fr_1.25fr]">
       <section className="rounded-2xl border border-line bg-surface p-5">
@@ -755,7 +799,8 @@ function ExportPage(props: { state: typeof initialState; rows: Record<string, st
               {["كل المصاريف", "مرة واحدة", "متكرر", "شهري"].map((item) => <option key={item}>{item}</option>)}
             </select>
           </Field>
-          <button className="btn-primary" onClick={props.downloadXlsx}><Download size={18} /> تصدير Excel</button>
+          <button className="btn-primary" onClick={props.downloadDetailedXlsx}><Download size={18} /> تحميل كل التفاصيل للتحليل</button>
+          <button className="btn-muted" onClick={props.downloadXlsx}><Download size={18} /> تصدير Excel حسب الفلتر</button>
           <button className="btn-muted" onClick={props.downloadCsv}><Download size={18} /> تصدير CSV</button>
         </div>
       </section>
