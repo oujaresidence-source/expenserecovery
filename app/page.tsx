@@ -2,7 +2,7 @@
 
 import type { ChangeEvent, ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Download, Home, Plus, Save, ScrollText, WalletCards } from "lucide-react";
+import { ChevronDown, Download, Home, Plus, Save, ScrollText, WalletCards } from "lucide-react";
 import {
   Apartment,
   ApartmentStatus,
@@ -358,11 +358,11 @@ function RebuildPage(props: {
           <div>
             <p className="text-xs font-black text-white/70">نموذج الشقة</p>
             <h2 className="text-2xl font-black md:text-3xl">{props.apartment.code}</h2>
-            <p className="mt-1 text-sm leading-6 text-white/76">كل بند تحته سؤال واضح. اختر نعم / لا / لا أتذكر.</p>
+            <p className="mt-1 text-sm leading-6 text-white/76">امسح القائمة بإصبع واحد. نعم / لا / مدري، والتفاصيل تظهر فقط عند الحاجة.</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <button className="rounded-xl bg-white px-3 py-2 text-sm font-black text-ink"><Save size={17} className="inline" /> حفظ</button>
-            <button className="rounded-xl bg-mint px-3 py-2 text-sm font-black text-ink"><Plus size={17} className="inline" /> إضافة سريع</button>
+            <button className="rounded-xl bg-mint px-3 py-2 text-sm font-black text-ink"><Plus size={17} className="inline" /> تخطّي التفاصيل</button>
           </div>
         </div>
         <Progress value={props.summary.completion} light />
@@ -394,17 +394,13 @@ function RebuildPage(props: {
       </section>
 
       {sectionOrder.map((section) => (
-        <section key={section} className="space-y-2">
-          <div className="rounded-2xl border border-line bg-surface p-3">
-            <h3 className="text-xl font-black text-ink">{section}</h3>
-            <p className="mt-1 text-sm leading-6 text-muted">جاوب على البنود التالية. كل بند له سؤال واختياراته.</p>
-          </div>
-          <div className="grid gap-2">
-            {expenses.filter((expense) => expense.section === section).map((expense) => (
-              <ExpenseCard key={expense.id} expense={expense} updateExpense={props.updateExpense} />
-            ))}
-          </div>
-        </section>
+        <SectionSweep
+          key={section}
+          section={section}
+          expenses={expenses.filter((expense) => expense.section === section)}
+          updateExpense={props.updateExpense}
+          defaultOpen={section === "دفعات البداية"}
+        />
       ))}
 
       <section className="rounded-2xl border border-line bg-surface p-5">
@@ -423,6 +419,131 @@ function RebuildPage(props: {
         </div>
       </section>
     </div>
+  );
+}
+
+function SectionSweep({ section, expenses, updateExpense, defaultOpen }: { section: string; expenses: Expense[]; updateExpense: (id: string, patch: Partial<Expense>) => void; defaultOpen?: boolean }) {
+  const answered = expenses.filter((expense) => expense.didPay !== "لا أتذكر" || expense.amountSar || expense.minAmountSar || expense.notes.trim()).length;
+  const yesCount = expenses.filter((expense) => expense.didPay === "نعم").length;
+
+  function setAll(didPay: DidPay) {
+    for (const expense of expenses) {
+      updateExpense(expense.id, { didPay });
+    }
+  }
+
+  return (
+    <details open={defaultOpen} className="group rounded-2xl border border-line bg-surface">
+      <summary className="flex list-none items-center justify-between gap-3 p-3">
+        <div>
+          <h3 className="text-xl font-black text-ink">{section}</h3>
+          <p className="mt-1 text-sm text-muted">{answered} من {expenses.length} مجاوب · {yesCount} نعم</p>
+        </div>
+        <ChevronDown className="shrink-0 text-muted transition group-open:rotate-180" size={22} />
+      </summary>
+
+      <div className="border-t border-line p-3 pt-2">
+        <div className="mb-3 grid grid-cols-2 gap-2">
+          <button className="rounded-xl border border-line bg-canvas px-3 py-2 text-sm font-black text-ink" onClick={() => setAll("لا")}>كلها لا</button>
+          <button className="rounded-xl border border-line bg-canvas px-3 py-2 text-sm font-black text-ink" onClick={() => setAll("لا أتذكر")}>كلها مدري</button>
+        </div>
+        <div className="grid gap-2">
+          {expenses.map((expense) => (
+            <SweepExpenseRow key={expense.id} expense={expense} updateExpense={updateExpense} />
+          ))}
+        </div>
+      </div>
+    </details>
+  );
+}
+
+function SweepExpenseRow({ expense, updateExpense }: { expense: Expense; updateExpense: (id: string, patch: Partial<Expense>) => void }) {
+  const template = expenseTemplates.find((item) => item.section === expense.section && item.itemName === expense.itemName);
+  const total = calculateExpenseTotal(expense);
+  const isYes = expense.didPay === "نعم";
+  const isRecurring = expense.expenseType === "متكرر";
+
+  function handleNumber(event: ChangeEvent<HTMLInputElement>, key: "amountSar" | "minAmountSar" | "maxAmountSar" | "numberOfPeriods") {
+    updateExpense(expense.id, { [key]: event.target.value ? Number(event.target.value) : null });
+  }
+
+  return (
+    <article className={`rounded-xl border p-2.5 ${isYes ? "border-brand bg-white" : "border-line bg-canvas/70"}`}>
+      <div className="grid grid-cols-[1fr_auto] items-center gap-2">
+        <div>
+          <h4 className="text-base font-black leading-snug text-ink">{expense.itemName}</h4>
+          {isYes && total ? <p className="mt-0.5 text-xs font-black text-brand">{formatSar(total)}</p> : null}
+        </div>
+        <div className="grid grid-cols-3 gap-1">
+          <ThumbButton active={expense.didPay === "نعم"} onClick={() => updateExpense(expense.id, { didPay: "نعم" })}>نعم</ThumbButton>
+          <ThumbButton active={expense.didPay === "لا"} onClick={() => updateExpense(expense.id, { didPay: "لا" })}>لا</ThumbButton>
+          <ThumbButton active={expense.didPay === "لا أتذكر"} onClick={() => updateExpense(expense.id, { didPay: "لا أتذكر" })}>مدري</ThumbButton>
+        </div>
+      </div>
+
+      {isYes ? (
+        <div className="mt-3 grid gap-2">
+          <div className="grid grid-cols-[1fr_auto] gap-2">
+            <input
+              className="input"
+              inputMode="numeric"
+              type="number"
+              min="0"
+              value={expense.amountSar ?? ""}
+              onChange={(event) => handleNumber(event, "amountSar")}
+              placeholder="المبلغ"
+            />
+            <select className="input min-w-24" value={expense.amountType} onChange={(event) => updateExpense(expense.id, { amountType: event.target.value as AmountType })}>
+              {amountTypeOptions.map((option) => <option key={option}>{option}</option>)}
+            </select>
+          </div>
+
+          {template?.suggestions?.length ? (
+            <div className="flex gap-1 overflow-x-auto pb-1">
+              {template.suggestions.slice(0, 5).map((range) => (
+                <button
+                  key={range.label}
+                  className="shrink-0 rounded-full border border-line bg-canvas px-3 py-1.5 text-xs font-black text-ink"
+                  onClick={() => updateExpense(expense.id, { minAmountSar: range.min, maxAmountSar: range.max, amountSar: null, amountType: "نطاق تقريبي", didPay: "نعم" })}
+                >
+                  {range.min.toLocaleString("ar-SA")} - {range.max.toLocaleString("ar-SA")}
+                </button>
+              ))}
+            </div>
+          ) : null}
+
+          {isRecurring ? (
+            <div className="grid grid-cols-2 gap-2">
+              <input className="input" inputMode="numeric" type="number" min="0" value={expense.numberOfPeriods ?? ""} onChange={(event) => handleNumber(event, "numberOfPeriods")} placeholder="عدد المرات" />
+              <select className="input" value={expense.recurringType} onChange={(event) => updateExpense(expense.id, { recurringType: event.target.value as RecurringType })}>
+                {recurringOptions.map((option) => <option key={option}>{option}</option>)}
+              </select>
+            </div>
+          ) : null}
+
+          <details>
+            <summary className="rounded-xl bg-canvas px-3 py-2 text-sm font-black text-muted">تفاصيل اختيارية</summary>
+            <div className="mt-2 grid gap-2">
+              <select className="input" value={expense.paymentSource} onChange={(event) => updateExpense(expense.id, { paymentSource: event.target.value as PaymentSource })}>
+                {paymentSourceOptions.map((option) => <option key={option}>{option}</option>)}
+              </select>
+              <select className="input" value={expense.paymentMethod} onChange={(event) => updateExpense(expense.id, { paymentMethod: event.target.value as PaymentMethod })}>
+                {paymentMethodOptions.map((option) => <option key={option}>{option}</option>)}
+              </select>
+              <textarea className="input min-h-20" value={expense.notes} onChange={(event) => updateExpense(expense.id, { notes: event.target.value })} placeholder="ملاحظة قصيرة" />
+            </div>
+          </details>
+        </div>
+      ) : null}
+    </article>
+  );
+}
+
+function ThumbButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: ReactNode }) {
+  return (
+    <button className={`min-h-10 rounded-xl px-2 text-sm font-black ${active ? "bg-brand text-white" : "border border-line bg-surface text-ink"}`} onClick={onClick}>
+      {children}
+    </button>
   );
 }
 
