@@ -211,6 +211,23 @@ export function createExpenseFromTemplate(apartmentId: string, template: Expense
   };
 }
 
+export function ensureExpensesForApartments(apartments: Apartment[], expenses: Expense[]) {
+  const existingById = new Map(expenses.map((expense) => [expense.id, expense]));
+  const complete = [...expenses];
+
+  for (const apartment of apartments) {
+    for (const template of expenseTemplates) {
+      const seeded = createExpenseFromTemplate(apartment.id, template);
+      if (!existingById.has(seeded.id)) {
+        complete.push(seeded);
+        existingById.set(seeded.id, seeded);
+      }
+    }
+  }
+
+  return complete;
+}
+
 export function formatSar(value: number) {
   return new Intl.NumberFormat("ar-SA", {
     style: "currency",

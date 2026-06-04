@@ -15,6 +15,7 @@ import {
   PaymentSource,
   RecurringType,
   createExpenseFromTemplate,
+  ensureExpensesForApartments,
   calculateExpenseTotal,
   exportRows,
   expenseTemplates,
@@ -69,7 +70,10 @@ export default function ArabicRecoveryApp() {
       }
 
       const saved = window.localStorage.getItem(storageKey);
-      if (saved) setState(JSON.parse(saved));
+      if (saved) {
+        const parsed = JSON.parse(saved) as typeof initialState;
+        setState({ ...parsed, expenses: ensureExpensesForApartments(parsed.apartments, parsed.expenses) });
+      }
       hydratedRef.current = true;
     }
 
@@ -104,9 +108,11 @@ export default function ArabicRecoveryApp() {
   }, [state.apartments, state.expenses, state.activeApartmentId, state.activePage]);
 
   const activeApartment = state.apartments.find((apartment) => apartment.id === state.activeApartmentId) ?? state.apartments[0];
-  const activeSummary = summarizeApartment(activeApartment, state.expenses);
-  const portfolio = useMemo(() => summarizePortfolio(state), [state]);
-  const filteredRows = useMemo(() => exportRows(state, exportApartmentId), [state, exportApartmentId]);
+  const visibleExpenses = useMemo(() => ensureExpensesForApartments(state.apartments, state.expenses), [state.apartments, state.expenses]);
+  const activeSummary = summarizeApartment(activeApartment, visibleExpenses);
+  const displayState = useMemo(() => ({ ...state, expenses: visibleExpenses }), [state, visibleExpenses]);
+  const portfolio = useMemo(() => summarizePortfolio(displayState), [displayState]);
+  const filteredRows = useMemo(() => exportRows(displayState, exportApartmentId), [displayState, exportApartmentId]);
 
   function setPage(activePage: PageKey) {
     setState((current) => ({ ...current, activePage }));
@@ -207,11 +213,11 @@ export default function ArabicRecoveryApp() {
           {syncError ? <div className="mt-3 rounded-2xl border border-coral bg-surface p-3 text-sm font-bold text-coral">تنبيه Supabase: {syncError}</div> : null}
 
           {state.activePage === "dashboard" && (
-            <Dashboard state={state} portfolio={portfolio} setPage={setPage} setActiveApartment={(id) => setState((current) => ({ ...current, activeApartmentId: id }))} />
+            <Dashboard state={displayState} portfolio={portfolio} setPage={setPage} setActiveApartment={(id) => setState((current) => ({ ...current, activeApartmentId: id }))} />
           )}
           {state.activePage === "apartments" && (
             <ApartmentsPage
-              state={state}
+              state={displayState}
               newApartmentCode={newApartmentCode}
               setNewApartmentCode={setNewApartmentCode}
               addApartment={addApartment}
@@ -221,7 +227,7 @@ export default function ArabicRecoveryApp() {
           )}
           {state.activePage === "rebuild" && (
             <RebuildPage
-              state={state}
+              state={displayState}
               apartment={activeApartment}
               summary={activeSummary}
               updateApartment={updateApartment}
@@ -235,7 +241,7 @@ export default function ArabicRecoveryApp() {
             />
           )}
           {state.activePage === "export" && (
-            <ExportPage state={state} rows={filteredRows} exportApartmentId={exportApartmentId} setExportApartmentId={setExportApartmentId} downloadCsv={downloadCsv} downloadXlsx={downloadXlsx} />
+            <ExportPage state={displayState} rows={filteredRows} exportApartmentId={exportApartmentId} setExportApartmentId={setExportApartmentId} downloadCsv={downloadCsv} downloadXlsx={downloadXlsx} />
           )}
         </section>
       </div>

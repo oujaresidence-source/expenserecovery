@@ -1,4 +1,5 @@
 import type { Apartment, Expense, RecoveryState } from "@/lib/expense-recovery";
+import { ensureExpensesForApartments } from "@/lib/expense-recovery";
 import { getSupabaseBrowserClient } from "@/lib/supabase";
 
 type ApartmentRow = {
@@ -62,7 +63,8 @@ export async function loadRecoveryFromSupabase(seed: RecoveryState) {
   }
 
   const apartments = (apartmentRows as ApartmentRow[]).map(fromApartmentRow);
-  const expenses = (expenseRows as ExpenseRow[] | null ?? []).map(fromExpenseRow);
+  const loadedExpenses = (expenseRows as ExpenseRow[] | null ?? []).map(fromExpenseRow);
+  const expenses = ensureExpensesForApartments(apartments, loadedExpenses);
 
   return {
     ...seed,
