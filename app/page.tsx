@@ -188,11 +188,11 @@ export default function ArabicRecoveryApp() {
           </div>
         </aside>
 
-        <section className="flex-1 px-4 pb-28 pt-5 sm:px-6 lg:px-8">
-          <header className="flex flex-col gap-3 rounded-2xl border border-line bg-surface p-4 shadow-soft md:flex-row md:items-center md:justify-between">
+        <section className="flex-1 px-3 pb-24 pt-3 sm:px-6 lg:px-8 lg:pt-5">
+          <header className="flex flex-col gap-3 rounded-2xl border border-line bg-surface p-3 shadow-soft md:flex-row md:items-center md:justify-between md:p-4">
             <div>
-              <p className="text-sm font-black text-brand">Google Form على steroids</p>
-              <h2 className="mt-1 text-3xl font-black text-ink">{navItems.find((item) => item.key === state.activePage)?.label}</h2>
+              <p className="text-sm font-black text-brand">نموذج مصاريف بسيط</p>
+              <h2 className="mt-1 text-2xl font-black text-ink md:text-3xl">{navItems.find((item) => item.key === state.activePage)?.label}</h2>
             </div>
             <div className="flex flex-wrap gap-2">
               <span className="rounded-xl bg-canvas px-3 py-2 text-sm font-black text-muted">{storageMode === "supabase" ? "Supabase متصل" : "حفظ محلي"}</span>
@@ -240,13 +240,13 @@ export default function ArabicRecoveryApp() {
         </section>
       </div>
 
-      <nav className="safe-bottom fixed inset-x-0 bottom-0 z-50 grid grid-cols-4 border-t border-line bg-surface/96 px-2 py-2 backdrop-blur lg:hidden">
+      <nav className="safe-bottom fixed inset-x-0 bottom-0 z-50 grid grid-cols-4 border-t border-line bg-surface/98 px-2 py-1.5 shadow-[0_-6px_18px_oklch(0.25_0.03_250/0.10)] lg:hidden">
         {navItems.map((item) => {
           const Icon = item.icon;
           const active = state.activePage === item.key;
           return (
-            <button key={item.key} className={`grid place-items-center gap-1 rounded-xl px-1 py-2 text-xs font-black ${active ? "bg-brand text-white" : "text-muted"}`} onClick={() => setPage(item.key)}>
-              <Icon size={19} />
+            <button key={item.key} className={`grid place-items-center gap-1 rounded-xl px-1 py-2 text-[11px] font-black ${active ? "bg-brand text-white" : "text-muted"}`} onClick={() => setPage(item.key)}>
+              <Icon size={18} />
               {item.label}
             </button>
           );
@@ -346,23 +346,24 @@ function RebuildPage(props: {
   const expenses = props.state.expenses.filter((expense) => expense.apartmentId === props.apartment.id && !expense.archivedAt);
 
   return (
-    <div className="mt-5 space-y-5">
-      <div className="sticky top-3 z-30 rounded-2xl border border-line bg-ink p-4 text-white shadow-soft">
+    <div className="mt-4 space-y-4">
+      <div className="rounded-2xl border border-line bg-ink p-3 text-white shadow-soft lg:sticky lg:top-3 lg:z-30 lg:p-4">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="text-sm font-black text-white/70">نموذج الشقة الطويل</p>
-            <h2 className="text-3xl font-black">{props.apartment.code}</h2>
-            <p className="mt-1 text-sm text-white/76">تم الحفظ تلقائياً. جاوب نعم / لا / لا أتذكر واترك الباقي فاضي.</p>
+            <p className="text-xs font-black text-white/70">نموذج الشقة</p>
+            <h2 className="text-2xl font-black md:text-3xl">{props.apartment.code}</h2>
+            <p className="mt-1 text-sm leading-6 text-white/76">كل بند تحته سؤال واضح. اختر نعم / لا / لا أتذكر.</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button className="rounded-xl bg-white px-4 py-3 text-sm font-black text-ink"><Save size={18} className="inline" /> حفظ</button>
-            <button className="rounded-xl bg-mint px-4 py-3 text-sm font-black text-ink"><Plus size={18} className="inline" /> إضافة مصروف سريع</button>
+            <button className="rounded-xl bg-white px-3 py-2 text-sm font-black text-ink"><Save size={17} className="inline" /> حفظ</button>
+            <button className="rounded-xl bg-mint px-3 py-2 text-sm font-black text-ink"><Plus size={17} className="inline" /> إضافة سريع</button>
           </div>
         </div>
         <Progress value={props.summary.completion} light />
       </div>
 
-      <section className="rounded-2xl border border-line bg-surface p-4">
+      <section className="rounded-2xl border border-line bg-surface p-3 md:p-4">
+        <h3 className="mb-3 text-xl font-black text-ink">معلومات الشقة</h3>
         <div className="grid gap-3 md:grid-cols-2">
           <Field label="اختر الشقة">
             <select className="input" value={props.apartment.id} onChange={(event) => props.setActiveApartment(event.target.value)}>
@@ -387,12 +388,12 @@ function RebuildPage(props: {
       </section>
 
       {sectionOrder.map((section) => (
-        <section key={section} className="space-y-3">
-          <div className="rounded-2xl bg-brand p-4 text-white">
-            <h3 className="text-2xl font-black">{section}</h3>
-            <p className="mt-1 text-sm text-white/78">كل الكروت موجودة قدامك. لا تحتاج تضيف تصنيفات بنفسك.</p>
+        <section key={section} className="space-y-2">
+          <div className="rounded-2xl border border-line bg-surface p-3">
+            <h3 className="text-xl font-black text-ink">{section}</h3>
+            <p className="mt-1 text-sm leading-6 text-muted">جاوب على البنود التالية. كل بند له سؤال واختياراته.</p>
           </div>
-          <div className="grid gap-3">
+          <div className="grid gap-2">
             {expenses.filter((expense) => expense.section === section).map((expense) => (
               <ExpenseCard key={expense.id} expense={expense} updateExpense={props.updateExpense} />
             ))}
@@ -423,28 +424,32 @@ function ExpenseCard({ expense, updateExpense }: { expense: Expense; updateExpen
   const template = expenseTemplates.find((item) => item.section === expense.section && item.itemName === expense.itemName);
   const shouldShowRanges = expense.didPay === "لا أتذكر" || expense.amountType === "تقديري" || expense.amountType === "نطاق تقريبي";
   const total = calculateExpenseTotal(expense);
+  const mainQuestion = expense.section === "المصاريف الشهرية والمتكررة" ? "هل هذا المصروف موجود؟" : expense.section === "الأثاث" ? "هل اشتريته؟" : "هل دفعت هذا المصروف؟";
 
   function handleNumber(event: ChangeEvent<HTMLInputElement>, key: "amountSar" | "minAmountSar" | "maxAmountSar" | "numberOfPeriods") {
     updateExpense(expense.id, { [key]: event.target.value ? Number(event.target.value) : null });
   }
 
   return (
-    <article className="rounded-2xl border border-line bg-surface p-4">
-      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+    <article className="rounded-2xl border border-line bg-surface p-3 md:p-4">
+      <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-black text-muted">{expense.section}</p>
-          <h4 className="mt-1 text-2xl font-black text-ink">{expense.itemName}</h4>
+          <p className="text-xs font-black text-muted">{expense.section}</p>
+          <h4 className="mt-1 text-xl font-black text-ink md:text-2xl">{expense.itemName}</h4>
         </div>
-        <p className="rounded-full bg-canvas px-3 py-1 text-sm font-black text-ink">{formatSar(total)}</p>
+        <p className="shrink-0 rounded-full bg-canvas px-3 py-1 text-xs font-black text-ink">{formatSar(total)}</p>
       </div>
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-3">
-        <Choice label={expense.section === "المصاريف الشهرية والمتكررة" ? "هل هذا المصروف موجود؟" : expense.section === "الأثاث" ? "هل اشتريته؟" : "هل دفعت هذا المصروف؟"} value={expense.didPay} options={didPayOptions} onChange={(value) => updateExpense(expense.id, { didPay: value as DidPay })} />
-        <Choice label="نوع المصروف" value={expense.expenseType} options={expenseTypeOptions} onChange={(value) => updateExpense(expense.id, { expenseType: value as ExpenseType })} />
+      <div className="mt-3 rounded-xl bg-canvas p-3">
+        <Choice label={mainQuestion} value={expense.didPay} options={didPayOptions} onChange={(value) => updateExpense(expense.id, { didPay: value as DidPay })} variant="primary" />
+      </div>
+
+      <div className="mt-3 grid gap-3 lg:grid-cols-3">
         <Field label="المبلغ">
           <input className="input" type="number" min="0" value={expense.amountSar ?? ""} onChange={(event) => handleNumber(event, "amountSar")} placeholder="ريال" />
         </Field>
         <Choice label="نوع المبلغ" value={expense.amountType} options={amountTypeOptions} onChange={(value) => updateExpense(expense.id, { amountType: value as AmountType })} />
+        <Choice label="نوع المصروف" value={expense.expenseType} options={expenseTypeOptions} onChange={(value) => updateExpense(expense.id, { expenseType: value as ExpenseType })} />
         <Field label="أقل مبلغ">
           <input className="input" type="number" min="0" value={expense.minAmountSar ?? ""} onChange={(event) => handleNumber(event, "minAmountSar")} placeholder="إذا كان نطاق" />
         </Field>
@@ -507,11 +512,11 @@ function ExpenseCard({ expense, updateExpense }: { expense: Expense; updateExpen
       </div>
 
       {shouldShowRanges && template?.suggestions?.length ? (
-        <div className="mt-4 rounded-2xl bg-canvas p-3">
+        <div className="mt-3 rounded-xl bg-canvas p-3">
           <p className="font-black text-ink">اختر أقرب نطاق تقريبي</p>
           <div className="mt-2 flex flex-wrap gap-2">
             {template.suggestions.slice(0, 8).map((range) => (
-              <button key={range.label} className="rounded-xl border border-line bg-surface px-3 py-2 text-sm font-black text-ink" onClick={() => updateExpense(expense.id, { minAmountSar: range.min, maxAmountSar: range.max, amountSar: null, amountType: "نطاق تقريبي", didPay: "نعم" })}>
+              <button key={range.label} className="rounded-xl border border-line bg-surface px-3 py-2 text-xs font-black text-ink md:text-sm" onClick={() => updateExpense(expense.id, { minAmountSar: range.min, maxAmountSar: range.max, amountSar: null, amountType: "نطاق تقريبي", didPay: "نعم" })}>
                 {range.label}
               </button>
             ))}
@@ -600,13 +605,13 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-function Choice({ label, value, options, onChange }: { label: string; value: string; options: string[]; onChange: (value: string) => void }) {
+function Choice({ label, value, options, onChange, variant = "default" }: { label: string; value: string; options: string[]; onChange: (value: string) => void; variant?: "default" | "primary" }) {
   return (
     <div>
       <p className="text-sm font-black text-ink">{label}</p>
-      <div className="mt-2 flex flex-wrap gap-2">
+      <div className={variant === "primary" ? "mt-2 grid grid-cols-3 gap-2" : "mt-2 flex flex-wrap gap-2"}>
         {options.map((option) => (
-          <button key={option} className={`rounded-xl px-3 py-2 text-sm font-black ${value === option ? "bg-brand text-white" : "border border-line bg-canvas text-ink"}`} onClick={() => onChange(option)}>
+          <button key={option} className={`rounded-xl px-3 py-2 text-sm font-black ${value === option ? "bg-brand text-white" : "border border-line bg-surface text-ink"}`} onClick={() => onChange(option)}>
             {option}
           </button>
         ))}
